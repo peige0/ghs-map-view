@@ -1,0 +1,12 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local test inputs / generated exports
+*.map
+*.elf
+*.hex
+*.s19
+memory_regions.csv
