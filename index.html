@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GHS Map / LD Analyzer v3</title>
+<style>
+:root{
+  --bg:#0f1115;--panel:#171a21;--panel2:#1f232c;--line:#303641;--text:#e7eaf0;--muted:#9aa4b2;
+  --blue:#4c9aff;--green:#43b581;--orange:#e6a23c;--red:#e35d6a;--purple:#9b7ede;--free:#2b3039;
+}
+*{box-sizing:border-box} body{margin:0;font:13px/1.45 "Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--text)}
+header{height:48px;display:flex;align-items:center;gap:14px;padding:0 16px;background:#11141a;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
+header b{font-size:16px}.grow{flex:1}.btn,.select,.input{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:7px 10px}
+.btn{cursor:pointer}.btn:hover{border-color:#596273}.btn.primary{background:#265ea8;border-color:#3978ca}
+input[type=file]{display:none}
+main{padding:12px;display:grid;grid-template-columns:1fr;gap:12px}
+.drop{border:1px dashed #4b5565;border-radius:8px;padding:14px;display:flex;align-items:center;gap:10px;background:#141820}
+.badges{display:flex;gap:8px;flex-wrap:wrap}.badge{padding:4px 8px;border-radius:999px;background:#222833;color:#cbd3df;border:1px solid #343c49}
+.badge.ok{border-color:#2f8b65;color:#7fe0b6}.badge.warn{border-color:#9a6d22;color:#ffd58a}
+.cards{display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:10px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px}
+.card .k{font-size:12px;color:var(--muted)}.card .v{font-size:22px;font-weight:600;margin-top:4px}.card .s{color:var(--muted);margin-top:2px}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px}
+.tabs{display:flex;gap:6px}.tab{padding:7px 10px;border-radius:6px;cursor:pointer;color:#bfc6d1}.tab.active{background:#263042;color:white}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.panel-title{padding:10px 12px;border-bottom:1px solid var(--line);font-weight:600;display:flex;align-items:center;gap:8px}
+#view{min-height:620px}
+table{width:100%;border-collapse:collapse}th,td{padding:8px 9px;border-bottom:1px solid #262c35;text-align:left;white-space:nowrap}
+th{position:sticky;top:48px;background:#1b1f27;color:#c8d0dc;z-index:3}
+tr:hover td{background:#1c212a}.num{text-align:right;font-variant-numeric:tabular-nums}
+.bar{height:8px;background:#2b3039;border-radius:4px;overflow:hidden;min-width:100px}.bar>i{display:block;height:100%;background:var(--blue)}
+.small{font-size:11px;color:var(--muted)}.warnText{color:#ffd58a}.badText{color:#ff8c97}
+.address-wrap{padding:14px}.region-row{margin-bottom:16px}.region-head{display:grid;grid-template-columns:180px 120px 120px 120px 1fr;gap:8px;margin-bottom:6px;align-items:end}
+.addrbar{position:relative;height:54px;border:1px solid #39414d;background:#11151b;border-radius:5px;overflow:hidden}
+.addrseg{position:absolute;top:0;height:100%;border-right:1px solid rgba(255,255,255,.18);min-width:1px;overflow:hidden;padding:4px 5px;font-size:10px;color:#fff}
+.addrseg:hover{outline:2px solid white;z-index:2}.gap{background:repeating-linear-gradient(45deg,#20252d,#20252d 6px,#242a33 6px,#242a33 12px)}
+.treemap{height:690px;position:relative;background:#11151b;overflow:hidden}.tile{position:absolute;border:1px solid rgba(255,255,255,.28);padding:5px;overflow:hidden;cursor:default}
+.tile:hover{outline:2px solid white;z-index:4}.tile b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tile span{font-size:11px;opacity:.85}
+.legend{display:flex;gap:12px;flex-wrap:wrap;color:var(--muted);font-size:11px}.dot{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:4px}
+.empty{padding:60px;text-align:center;color:var(--muted)}
+.region-editor{padding:12px}.region-grid{display:grid;grid-template-columns:160px 130px 130px 1fr 100px;gap:6px;align-items:center;margin-bottom:6px}
+.region-grid input{width:100%}
+footer{padding:14px;color:#7f8997;text-align:center}
+@media(max-width:1000px){.cards{grid-template-columns:repeat(2,1fr)}.region-head{grid-template-columns:140px 100px 100px 100px 1fr}}
+
+.explorer{display:grid;grid-template-columns:minmax(360px,42%) 1fr;min-height:720px}
+.explorer-left{border-right:1px solid var(--line);padding:12px;overflow:auto;max-height:780px}.explorer-right{overflow:auto;max-height:780px}
+.explorer-tools{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px}.explorer-tools .input,.explorer-tools .select{min-width:120px}
+.bank-card{border:1px solid var(--line);border-radius:7px;margin-bottom:10px;background:#13171e;overflow:hidden}.bank-head{display:flex;gap:8px;align-items:center;padding:9px 10px;background:#1b2028;cursor:pointer}.bank-head:hover{background:#202630}
+.bank-name{font-weight:700}.bank-meta{margin-left:auto;color:var(--muted);font-size:11px}.section-stack{padding:7px}.section-row{position:relative;display:grid;grid-template-columns:minmax(120px,1fr) 88px 75px;gap:7px;align-items:center;padding:6px 7px;border-radius:5px;cursor:pointer;overflow:hidden}.section-row:hover,.section-row.active{background:#263042}.section-row .fill{position:absolute;left:0;top:0;bottom:0;opacity:.18;pointer-events:none}.section-row>*:not(.fill){position:relative;z-index:1}.section-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.section-size{text-align:right;font-variant-numeric:tabular-nums}.section-count{text-align:right;color:var(--muted);font-size:11px}
+.symbol-row{cursor:pointer}.symbol-row.selected td{background:#30405a!important}.tiny{font-size:10px;color:var(--muted)}.pill{display:inline-block;padding:2px 6px;border:1px solid #3b4655;border-radius:999px;font-size:10px;color:#cbd3df}
+.module-summary{padding:10px;border-bottom:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap}.module-chip{padding:5px 7px;border:1px solid var(--line);border-radius:5px;background:#141920;cursor:pointer}.module-chip:hover{border-color:#596273}
+.detailbox{padding:10px 12px;border-bottom:1px solid var(--line);background:#12161d;display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:8px}.detailbox .k{font-size:10px;color:var(--muted)}.detailbox .v{font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:1050px){.explorer{grid-template-columns:1fr}.explorer-left{border-right:0;border-bottom:1px solid var(--line);max-height:none}.detailbox{grid-template-columns:repeat(2,minmax(120px,1fr))}}
+
+</style>
+</head>
+<body>
+<header>
+  <b>GHS Map / LD Analyzer v3</b>
+  <span class="small">Green Hills .map + linker .ld · Explorer enhanced</span>
+  <div class="grow"></div>
+  <label class="btn primary" for="files">打开文件</label><input id="files" type="file" multiple accept=".map,.ld,.h,.txt">
+  <button class="btn" id="exportCsv">导出 CSV</button>
+</header>
+<main>
+  <div class="drop" id="drop">
+    <b>拖入 .map + .ld</b>
+    <span class="small">可选再拖入 CCFC3008PC_memory_smp.h；如果 LD 的 org/len 使用宏，工具会优先从头文件和 Map 中解析。无法解析的 Region 可手工覆盖。</span>
+    <div class="grow"></div><div class="badges" id="badges"></div>
+  </div>
+
+  <div class="cards" id="cards"></div>
+
+  <div class="toolbar">
+    <div class="tabs">
+      <div class="tab active" data-view="regions">Memory Regions</div>
+      <div class="tab" data-view="address">Address Layout</div>
+      <div class="tab" data-view="explorer">Explorer</div>
+      <div class="tab" data-view="treemap">Treemap</div>
+      <div class="tab" data-view="sections">Sections</div>
+      <div class="tab" data-view="modules">Modules</div>
+      <div class="tab" data-view="symbols">Symbols</div>
+      <div class="tab" data-view="override">Region Override</div>
+    </div>
+    <div class="grow"></div>
+    <select id="sort" class="select">
+      <option value="addr">地址 ↑</option>
+      <option value="sizeDesc">大小 ↓</option>
+      <option value="sizeAsc">大小 ↑</option>
+      <option value="freeDesc">剩余空间 ↓</option>
+      <option value="usageDesc">使用率 ↓</option>
+      <option value="gapDesc">最大连续空闲 ↓</option>
+      <option value="name">名称</option>
+    </select>
+    <select id="metric" class="select">
+      <option value="symbols">Treemap: Symbol</option>
+      <option value="modules">Treemap: Module</option>
+      <option value="sections">Treemap: Section</option>
+    </select>
+    <input id="search" class="input" placeholder="搜索 section / module / symbol">
+  </div>
+
+  <div class="panel">
+    <div class="panel-title"><span id="title">Memory Regions</span><div class="grow"></div><span class="legend" id="legend"></span></div>
+    <div id="view"><div class="empty">请打开 GHS Project.map 和对应的 .ld</div></div>
+  </div>
+</main>
+<footer>所有解析均在浏览器本地完成，不上传文件。Used 为实际区间并集；Largest Free Hole 为 Region 内最大连续空闲区。</footer>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const state={mapText:'',ldText:'',headerText:'',mapName:'',ldName:'',sections:[],modules:[],symbols:[],regions:[],sectionRegion:{},constants:{},overrides:{},view:'regions',sort:'addr',metric:'symbols',search:'',explorerSection:'',explorerRegion:'',explorerModule:'',minSize:0,selectedSymbol:null};
+
+function hex(n,w=8){return Number.isFinite(n)?'0x'+Math.max(0,Math.trunc(n)).toString(16).toUpperCase().padStart(w,'0'):'—'}
+function fmt(n){if(!Number.isFinite(n))return '—'; if(n>=1024*1024)return (n/1048576).toFixed(2)+' MB'; if(n>=1024)return (n/1024).toFixed(2)+' KB'; return n+' B'}
+function pct(x){return Number.isFinite(x)?(x*100).toFixed(1)+'%':'—'}
+function cleanName(s){return (s||'').split('..D.')[0]}
+function normKey(s){return String(s||'').replace(/^__+/,'').replace(/_/g,'').toUpperCase()}
+function stripComments(s){return s.replace(/\/\*[\s\S]*?\*\//g,' ').replace(/\/\/.*$/gm,' ')}
+
+function parseMap(text){
+  const lines=text.split(/\r?\n/), sections=[], modules=[], symbols=[], consts={};
+  let mode='';
+  for(let i=0;i<lines.length;i++){
+    const line=lines[i];
+    if(/^\s*Image Summary\s*$/.test(line)){mode='image';continue}
+    if(/^\s*Module Summary\s*$/.test(line)){mode='module';continue}
+    if(/^\s*Global Symbols/.test(line)){mode='symbol';continue}
+    if(/^\s*Linker Directives/.test(line)||/^\s*Cross Reference/.test(line)){mode='';continue}
+
+    if(mode==='image'){
+      const m=line.match(/^\s*(\.\S+)\s+([0-9A-Fa-f]{8,16})\s+([0-9A-Fa-f]{6,16})\s+(\d+)\s+([0-9A-Fa-f]+)/);
+      if(m){sections.push({name:m[1],base:parseInt(m[2],16),size:parseInt(m[3],16),dec:+m[4],end:parseInt(m[2],16)+parseInt(m[3],16)});}
+    } else if(mode==='module'){
+      const m=line.match(/^\s*([0-9A-Fa-f]{8,16})\+([0-9A-Fa-f]{6,16})\s+(.+?)\s+(\S.*)$/);
+      if(m){
+        const base=parseInt(m[1],16), size=parseInt(m[2],16);
+        let sectionPart=m[3].trim(), module=m[4].trim(), outSection=sectionPart;
+        if(sectionPart.includes('->')) outSection=sectionPart.split('->').pop().trim();
+        if(size>0) modules.push({base,size,end:base+size,section:outSection,module});
+      }
+    } else if(mode==='symbol'){
+      let m=line.match(/^\s*(\.\S+)\s+([0-9A-Fa-f]{8,16})\+([0-9A-Fa-f]{6,16})\s+(.+)$/);
+      if(m){
+        const base=parseInt(m[2],16),size=parseInt(m[3],16),name=cleanName(m[4].trim());
+        if(size>0) symbols.push({section:m[1],base,size,end:base+size,name});
+        continue;
+      }
+      m=line.match(/^\s*([0-9A-Fa-f]{8,16})\+([0-9A-Fa-f]{6,16})\s+(?:[A-Za-z]\s+)?(.+)$/);
+      if(m){
+        const base=parseInt(m[1],16),size=parseInt(m[2],16),name=cleanName(m[3].trim());
+        if(size>0 && base!==0) symbols.push({section:'',base,size,end:base+size,name});
+        if(size===0 && name.startsWith('__')) consts[name]=base;
+      }
+    }
+    // Linker absolute symbols are often repeated outside the Global Symbols header.
+    const am=line.match(/^\s*([0-9A-Fa-f]{8,16})\+000000\s+(__[A-Za-z0-9_.$]+)\s*$/);
+    if(am) consts[am[2]]=parseInt(am[1],16);
+  }
+  return {sections,modules,symbols,consts};
+}
+
+function parseDefines(text){
+  const out={};
+  for(const line of stripComments(text).split(/\r?\n/)){
+    let m=line.match(/^\s*#define\s+([A-Za-z_]\w*)\s+\(?\s*(0x[0-9A-Fa-f]+|\d+)\s*[uUlL]*\s*\)?/);
+    if(m) out[m[1]]=parseInt(m[2],0);
+    m=line.match(/^\s*([A-Za-z_]\w*)\s*=\s*(.+?)\s*;\s*$/);
+    if(m) out[m[1]]=m[2].trim();
+  }
+  return out;
+}
+
+function evalExpr(expr, dict){
+  if(expr==null)return NaN;
+  let s=String(expr).replace(/[uUlL]+\b/g,'').trim();
+  for(let pass=0;pass<20;pass++){
+    let changed=false;
+    s=s.replace(/\b[A-Za-z_]\w*\b/g,(name)=>{
+      let v=dict[name];
+      if(v==null){
+        const nk=normKey(name);
+        for(const [k,val] of Object.entries(dict)){if(normKey(k)===nk && Number.isFinite(val)){v=val;break}}
+      }
+      if(Number.isFinite(v)){changed=true;return String(v)}
+      return name;
+    });
+    if(!changed)break;
+  }
+  if(/[A-Za-z_]/.test(s))return NaN;
+  if(!/^[0-9xXa-fA-F()+\-*/%<>&|~\s.]+$/.test(s))return NaN;
+  try{
+    const v=Function('"use strict";return ('+s+')')();
+    return Number.isFinite(v)?Number(v):NaN;
+  }catch{return NaN}
+}
+
+function parseLd(text, mapConsts, headerText){
+  const raw=stripComments(text), dict={};
+  Object.assign(dict,parseDefines(headerText||''));
+
+  // expose map linker symbols both with and without "__" and normalized aliases
+  for(const [k,v] of Object.entries(mapConsts||{})){
+    dict[k]=v; dict[k.replace(/^__+/,'')]=v;
+  }
+
+  // Parse DEFAULTS/CONSTANTS simple assignments, resolving iteratively.
+  const assigns={};
+  for(const m of raw.matchAll(/\b([A-Za-z_]\w*)\s*=\s*([^;{}]+)\s*;/g)) assigns[m[1]]=m[2].trim();
+  for(let pass=0;pass<30;pass++){
+    let changed=false;
+    for(const [k,e] of Object.entries(assigns)){
+      if(Number.isFinite(dict[k]))continue;
+      const v=evalExpr(e,dict);
+      if(Number.isFinite(v)){dict[k]=v;changed=true}
+    }
+    if(!changed)break;
+  }
+
+  const memBlock=(raw.match(/\bMEMORY\s*\{([\s\S]*?)\}\s*SECTIONS\b/i)||[])[1]||'';
+  const flat=memBlock.replace(/\s+/g,' ').trim();
+  const regions=[];
+  const re=/([A-Za-z_]\w*)\s*:\s*org\s*=\s*(.*?)\s*,\s*len\s*=\s*(.*?)(?=\s+[A-Za-z_]\w*\s*:\s*org\s*=|$)/g;
+  let m;
+  while((m=re.exec(flat))){
+    const name=m[1], orgExpr=m[2].trim(), lenExpr=m[3].trim();
+    regions.push({name,orgExpr,lenExpr,origin:evalExpr(orgExpr,dict),length:evalExpr(lenExpr,dict)});
+  }
+
+  const sectionRegion={};
+  const lines=raw.split(/\r?\n/);
+  let cur=null, depth=0, seenBrace=false;
+  for(let i=0;i<lines.length;i++){
+    const line=lines[i];
+    let direct=line.match(/^\s*(\.[A-Za-z0-9_.$]+)[^{:]*?(?:ROM\([^)]*\)\s*)?:\s*>\s*([A-Za-z_]\w*)/);
+    if(direct){sectionRegion[direct[1]]=direct[2];continue}
+    let sm=line.match(/^\s*(\.[A-Za-z0-9_.$]+)\b[^:]*:\s*(?:\{|$)/);
+    if(sm){cur=sm[1]; depth=0; seenBrace=false}
+    if(cur){
+      const hits=[...line.matchAll(/>\s*([A-Za-z_]\w*)/g)];
+      if(hits.length) sectionRegion[cur]=hits[hits.length-1][1];
+      const opens=(line.match(/\{/g)||[]).length, closes=(line.match(/\}/g)||[]).length;
+      if(opens)seenBrace=true; depth+=opens-closes;
+      if(seenBrace && depth<=0 && closes){cur=null;seenBrace=false}
+    }
+  }
+  return {regions,sectionRegion,dict};
+}
+
+function unionIntervals(intervals, lo, hi){
+  let a=intervals.filter(x=>x[1]>x[0]).map(x=>[Math.max(lo,x[0]),Math.min(hi,x[1])]).filter(x=>x[1]>x[0]).sort((x,y)=>x[0]-y[0]);
+  const out=[];
+  for(const x of a){if(!out.length||x[0]>out[out.length-1][1])out.push(x);else out[out.length-1][1]=Math.max(out[out.length-1][1],x[1])}
+  return out;
+}
+function enrichRegions(){
+  const secByName=Object.fromEntries(state.sections.map(s=>[s.name,s]));
+  state.regions=state.regions.map(r=>{
+    const ov=state.overrides[r.name]||{};
+    const origin=Number.isFinite(ov.origin)?ov.origin:r.origin, length=Number.isFinite(ov.length)?ov.length:r.length;
+    let secs=state.sections.filter(s=>state.sectionRegion[s.name]===r.name);
+    if(Number.isFinite(origin)&&Number.isFinite(length)){
+      // Also attach currently unmapped sections that fall inside this region.
+      const hi=origin+length;
+      for(const s of state.sections) if(!state.sectionRegion[s.name] && s.base>=origin && s.base<hi && !secs.includes(s)) secs.push(s);
+      const ints=unionIntervals(secs.map(s=>[s.base,s.end]),origin,hi);
+      const used=ints.reduce((a,x)=>a+x[1]-x[0],0);
+      let gaps=[],p=origin;
+      for(const x of ints){if(x[0]>p)gaps.push([p,x[0]]);p=Math.max(p,x[1])}
+      if(p<hi)gaps.push([p,hi]);
+      const largest=gaps.reduce((m,g)=>Math.max(m,g[1]-g[0]),0);
+      return {...r,origin,length,end:hi,sections:secs,used,free:Math.max(0,length-used),usage:length?used/length:0,largestGap:largest,gaps,resolved:true};
+    } else {
+      const used=secs.reduce((a,s)=>a+s.size,0);
+      return {...r,origin,length,end:NaN,sections:secs,used,free:NaN,usage:NaN,largestGap:NaN,gaps:[],resolved:false};
+    }
+  });
+}
+
+function loadAll(){
+  if(state.mapText){
+    const p=parseMap(state.mapText); state.sections=p.sections;state.modules=p.modules;state.symbols=p.symbols;
+    state.mapConsts=p.consts;
+  }
+  if(state.ldText){
+    const p=parseLd(state.ldText,state.mapConsts||{},state.headerText);state.regions=p.regions;state.sectionRegion=p.sectionRegion;state.constants=p.dict;
+  } else {state.regions=[];state.sectionRegion={}}
+  enrichRegions(); render();
+}
+
+function regionOfItem(x){
+  if(x.section && state.sectionRegion[x.section])return state.sectionRegion[x.section];
+  for(const r of state.regions)if(r.resolved && x.base>=r.origin && x.base<r.end)return r.name;
+  return 'unmapped';
+}
+function colorFor(x){
+  const s=(x.section||x.name||'').toLowerCase();
+  if(/bss|zdata|noinit/.test(s))return '#e35d6a';
+  if(/data/.test(s))return '#e6a23c';
+  if(/rodata|const/.test(s))return '#43b581';
+  if(/text|startup|vector|boot|exception/.test(s))return '#4c9aff';
+  return '#6d86a8';
+}
+function sortList(arr,mode,kind){
+  const a=[...arr];
+  const getSize=x=>kind==='region'?(x.used||0):(x.size||0);
+  if(mode==='addr')a.sort((x,y)=>(x.origin??x.base??0)-(y.origin??y.base??0));
+  if(mode==='sizeDesc')a.sort((x,y)=>getSize(y)-getSize(x));
+  if(mode==='sizeAsc')a.sort((x,y)=>getSize(x)-getSize(y));
+  if(mode==='freeDesc')a.sort((x,y)=>(y.free??-1)-(x.free??-1));
+  if(mode==='usageDesc')a.sort((x,y)=>(y.usage??-1)-(x.usage??-1));
+  if(mode==='gapDesc')a.sort((x,y)=>(y.largestGap??-1)-(x.largestGap??-1));
+  if(mode==='name')a.sort((x,y)=>(x.name||x.module||'').localeCompare(y.name||y.module||''));
+  return a;
+}
+function filterList(arr){
+  const q=state.search.trim().toLowerCase(); if(!q)return arr;
+  return arr.filter(x=>JSON.stringify(x).toLowerCase().includes(q));
+}
+function cards(){
+  const resolved=state.regions.filter(r=>r.resolved), total=resolved.reduce((a,r)=>a+r.length,0),used=resolved.reduce((a,r)=>a+r.used,0);
+  const sec=state.sections.reduce((a,s)=>a+s.size,0);
+  const largest=[...resolved].sort((a,b)=>b.largestGap-a.largestGap)[0];
+  return [
+    ['Regions',state.regions.length,resolved.length+' resolved'],
+    ['Resolved Capacity',fmt(total),fmt(used)+' used · '+pct(total?used/total:NaN)],
+    ['Image Sections',state.sections.length,fmt(sec)+' payload'],
+    ['Largest Free Hole',largest?fmt(largest.largestGap):'—',largest?largest.name:'Need region length']
+  ];
+}
+function renderHeader(){
+  $('#badges').innerHTML=[
+    state.mapName?`<span class="badge ok">MAP: ${state.mapName}</span>`:`<span class="badge warn">缺少 .map</span>`,
+    state.ldName?`<span class="badge ok">LD: ${state.ldName}</span>`:`<span class="badge warn">缺少 .ld</span>`,
+    state.headerText?`<span class="badge ok">Memory header loaded</span>`:`<span class="badge">Memory header optional</span>`
+  ].join('');
+  $('#cards').innerHTML=cards().map(c=>`<div class="card"><div class="k">${c[0]}</div><div class="v">${c[1]}</div><div class="s">${c[2]}</div></div>`).join('');
+}
+function renderRegions(){
+  let rows=sortList(filterList(state.regions),state.sort,'region');
+  if(!rows.length)return '<div class="empty">LD 中没有解析到 MEMORY Region</div>';
+  return `<div style="overflow:auto"><table><thead><tr><th>Region</th><th>Origin</th><th>End</th><th class=num>Total</th><th class=num>Used</th><th class=num>Free</th><th class=num>Usage</th><th class=num>Largest Hole</th><th>Usage</th><th>LD expression</th></tr></thead><tbody>`+
+  rows.map(r=>`<tr><td><b>${r.name}</b></td><td>${hex(r.origin)}</td><td>${hex(r.end)}</td><td class=num>${fmt(r.length)}</td><td class=num>${fmt(r.used)}</td><td class=num>${fmt(r.free)}</td><td class=num>${pct(r.usage)}</td><td class=num>${fmt(r.largestGap)}</td><td><div class=bar><i style="width:${Number.isFinite(r.usage)?Math.min(100,r.usage*100):0}%"></i></div></td><td class=small>${r.resolved?'':`<span class=warnText>未解析：</span>`}${r.orgExpr} / ${r.lenExpr}</td></tr>`).join('')+
+  `</tbody></table></div>`;
+}
+function renderSections(){
+  let rows=sortList(filterList(state.sections),state.sort,'item');
+  return `<div style="overflow:auto"><table><thead><tr><th>Section</th><th>Region</th><th>Base</th><th>End</th><th class=num>Size</th></tr></thead><tbody>`+
+    rows.map(x=>`<tr><td><b>${x.name}</b></td><td>${state.sectionRegion[x.name]||regionOfItem(x)}</td><td>${hex(x.base)}</td><td>${hex(x.end)}</td><td class=num>${fmt(x.size)}</td></tr>`).join('')+`</tbody></table></div>`;
+}
+function renderModules(){
+  let grouped={};
+  for(const x of state.modules){
+    const k=x.module; if(!grouped[k])grouped[k]={module:k,size:0,base:x.base,end:x.end,sections:new Set()};
+    grouped[k].size+=x.size;grouped[k].base=Math.min(grouped[k].base,x.base);grouped[k].end=Math.max(grouped[k].end,x.end);grouped[k].sections.add(x.section);
+  }
+  let rows=Object.values(grouped).map(x=>({...x,name:x.module,sections:[...x.sections].join(', ')}));
+  rows=sortList(filterList(rows),state.sort,'item');
+  return `<div style="overflow:auto"><table><thead><tr><th>Module</th><th>Sections</th><th>Min Addr</th><th>Max Addr</th><th class=num>Total contribution</th></tr></thead><tbody>`+
+    rows.map(x=>`<tr><td><b>${x.module}</b></td><td class=small>${x.sections}</td><td>${hex(x.base)}</td><td>${hex(x.end)}</td><td class=num>${fmt(x.size)}</td></tr>`).join('')+`</tbody></table></div>`;
+}
+
+function esc(s){return String(s??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function moduleOfSymbol(sym){
+  let best=null;
+  for(const m of state.modules){
+    if(sym.base>=m.base && sym.base<m.end && (!sym.section||!m.section||sym.section===m.section)){
+      if(!best || m.size<best.size) best=m;
+    }
+  }
+  return best?best.module:'—';
+}
+function explorerSymbols(){
+  let rows=state.symbols.filter(x=>x.size>=state.minSize);
+  if(state.explorerSection)rows=rows.filter(x=>x.section===state.explorerSection);
+  if(state.explorerRegion)rows=rows.filter(x=>regionOfItem(x)===state.explorerRegion);
+  if(state.explorerModule)rows=rows.filter(x=>moduleOfSymbol(x)===state.explorerModule);
+  rows=filterList(rows);
+  return sortList(rows,state.sort,'item');
+}
+function sectionStats(){
+  const map={};
+  for(const s of state.sections)map[s.name]={...s,count:0,region:state.sectionRegion[s.name]||regionOfItem(s)};
+  for(const x of state.symbols){if(map[x.section])map[x.section].count++}
+  return Object.values(map);
+}
+function selectExplorer(section='',region='',module=''){
+  state.explorerSection=section;state.explorerRegion=region;state.explorerModule=module;state.selectedSymbol=null;render();
+}
+function renderExplorer(){
+  const stats=sectionStats();
+  const regions=state.regions.filter(r=>r.resolved);
+  const grouped={};
+  for(const s of stats){const k=s.region||'unmapped';(grouped[k]??=[]).push(s)}
+  if(!grouped.unmapped)grouped.unmapped=stats.filter(s=>!s.region||s.region==='unmapped');
+  let left=`<div class="explorer-tools">
+    <button class="btn" id="clearExplorer">全部</button>
+    <select id="minSize" class="select"><option value="0">全部大小</option><option value="4">≥ 4 B</option><option value="16">≥ 16 B</option><option value="64">≥ 64 B</option><option value="256">≥ 256 B</option><option value="1024">≥ 1 KB</option><option value="4096">≥ 4 KB</option></select>
+  </div>`;
+  const order=[...new Set([...regions.map(r=>r.name),...Object.keys(grouped)])];
+  for(const rn of order){
+    const secs=(grouped[rn]||[]).filter(s=>s.size>0).sort((a,b)=>b.size-a.size);if(!secs.length)continue;
+    const rr=state.regions.find(r=>r.name===rn), cap=rr?.length||secs.reduce((a,x)=>a+x.size,0), used=rr?.used??secs.reduce((a,x)=>a+x.size,0);
+    left+=`<div class="bank-card"><div class="bank-head" data-region="${esc(rn)}"><span class="bank-name">${esc(rn)}</span><span class="bank-meta">${fmt(used)} / ${fmt(cap)} · ${secs.length} sections</span></div><div class="section-stack">`;
+    for(const x of secs){const w=Math.max(1,Math.min(100,cap?x.size/cap*100:0));const active=state.explorerSection===x.name?' active':'';
+      left+=`<div class="section-row${active}" data-section="${esc(x.name)}" title="${esc(x.name)}\n${hex(x.base)} - ${hex(x.end)}\n${fmt(x.size)}"><i class="fill" style="width:${w}%;background:${colorFor(x)}"></i><span class="section-name"><b>${esc(x.name)}</b><br><span class="tiny">${hex(x.base)}</span></span><span class="section-size">${fmt(x.size)}</span><span class="section-count">${x.count} symbols</span></div>`;
+    }
+    left+='</div></div>';
+  }
+  let rows=explorerSymbols();
+  const total=rows.length, visible=rows.slice(0,5000);
+  const mods={};for(const x of rows){const m=moduleOfSymbol(x);mods[m]=(mods[m]||0)+x.size}
+  const topmods=Object.entries(mods).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  let right=`<div class="module-summary"><span class="pill">${total} symbols</span>${state.explorerRegion?`<span class="pill">Region: ${esc(state.explorerRegion)}</span>`:''}${state.explorerSection?`<span class="pill">Section: ${esc(state.explorerSection)}</span>`:''}${state.explorerModule?`<span class="pill">Module: ${esc(state.explorerModule)}</span>`:''}${topmods.map(([m,z])=>`<span class="module-chip" data-module="${esc(m)}" title="按模块筛选">${esc(m)} · ${fmt(z)}</span>`).join('')}</div>`;
+  if(state.selectedSymbol){const x=state.selectedSymbol;right+=`<div class="detailbox"><div><div class=k>Symbol</div><div class=v>${esc(x.name)}</div></div><div><div class=k>Address</div><div class=v>${hex(x.base)}</div></div><div><div class=k>Size</div><div class=v>${fmt(x.size)}</div></div><div><div class=k>Section / Region</div><div class=v>${esc(x.section||'—')} / ${esc(regionOfItem(x))}</div></div><div><div class=k>Module</div><div class=v>${esc(moduleOfSymbol(x))}</div></div></div>`}
+  right+=`<table><thead><tr><th>Symbol</th><th>Section</th><th>Region</th><th>Module</th><th>Address</th><th>End</th><th class=num>Size</th></tr></thead><tbody>`+
+    visible.map((x,i)=>`<tr class="symbol-row${state.selectedSymbol===x?' selected':''}" data-sym="${i}"><td><b>${esc(x.name)}</b></td><td>${esc(x.section||'—')}</td><td>${esc(regionOfItem(x))}</td><td class=small>${esc(moduleOfSymbol(x))}</td><td>${hex(x.base)}</td><td>${hex(x.end)}</td><td class=num>${fmt(x.size)}</td></tr>`).join('')+
+    `</tbody></table>${total>5000?`<div class="small" style="padding:10px">当前显示前 5000 项；用搜索/Section/Module 筛选可快速缩小范围。</div>`:''}`;
+  setTimeout(()=>{
+    const ms=$('#minSize');if(ms)ms.value=String(state.minSize);
+    $('#clearExplorer')?.addEventListener('click',()=>selectExplorer());
+    $$('.bank-head[data-region]').forEach(e=>e.onclick=()=>selectExplorer('',e.dataset.region,''));
+    $$('.section-row[data-section]').forEach(e=>e.onclick=()=>selectExplorer(e.dataset.section,'',''));
+    $$('.module-chip[data-module]').forEach(e=>e.onclick=()=>{state.explorerModule=e.dataset.module;state.explorerSection='';state.explorerRegion='';state.selectedSymbol=null;render()});
+    ms?.addEventListener('change',e=>{state.minSize=+e.target.value;state.selectedSymbol=null;render()});
+    const current=explorerSymbols().slice(0,5000);$$('.symbol-row[data-sym]').forEach(e=>e.onclick=()=>{state.selectedSymbol=current[+e.dataset.sym];render()});
+  },0);
+  return `<div class="explorer"><div class="explorer-left">${left}</div><div class="explorer-right">${right}</div></div>`;
+}
+
+function renderSymbols(){
+  let rows=sortList(filterList(state.symbols),state.sort,'item').slice(0,5000);
+  return `<div style="overflow:auto;max-height:760px"><table><thead><tr><th>Symbol</th><th>Section</th><th>Region</th><th>Address</th><th class=num>Size</th></tr></thead><tbody>`+
+    rows.map(x=>`<tr><td><b>${x.name}</b></td><td>${x.section||'—'}</td><td>${regionOfItem(x)}</td><td>${hex(x.base)}</td><td class=num>${fmt(x.size)}</td></tr>`).join('')+`</tbody></table></div>`;
+}
+function renderAddress(){
+  let rows=sortList(filterList(state.regions.filter(r=>r.resolved)),state.sort,'region');
+  if(!rows.length)return '<div class="empty">没有可解析 Origin/Length 的 Region。打开 memory_smp.h，或到 Region Override 手工填容量。</div>';
+  let h='<div class=address-wrap>';
+  for(const r of rows){
+    const parts=[];
+    const secs=[...r.sections].filter(s=>s.size>0).sort((a,b)=>a.base-b.base);
+    let p=r.origin;
+    for(const s of secs){
+      const a=Math.max(r.origin,s.base),b=Math.min(r.end,s.end); if(b<=a)continue;
+      if(a>p)parts.push({type:'gap',base:p,end:a,size:a-p});
+      parts.push({type:'sec',name:s.name,base:a,end:b,size:b-a,section:s.name});p=Math.max(p,b);
+    }
+    if(p<r.end)parts.push({type:'gap',base:p,end:r.end,size:r.end-p});
+    h+=`<div class=region-row><div class=region-head><b>${r.name}</b><span>${hex(r.origin)}</span><span>${hex(r.end)}</span><span>${fmt(r.length)}</span><span>Used ${fmt(r.used)} · Free ${fmt(r.free)} · Largest ${fmt(r.largestGap)}</span></div><div class=addrbar>`;
+    for(const x of parts){
+      const left=(x.base-r.origin)/r.length*100,w=x.size/r.length*100;
+      const label=x.type==='gap'?'FREE':x.name;
+      const bg=x.type==='gap'?'':`background:${colorFor(x)}`;
+      h+=`<div class="addrseg ${x.type==='gap'?'gap':''}" style="left:${left}%;width:${w}%;${bg}" title="${label}\n${hex(x.base)} - ${hex(x.end)}\n${fmt(x.size)}">${w>2?label:''}</div>`;
+    }
+    h+='</div></div>';
+  }
+  return h+'</div>';
+}
+function squarify(items,x,y,w,h,out){
+  if(!items.length)return;
+  if(items.length===1){out.push({...items[0],x,y,w,h});return}
+  const total=items.reduce((a,i)=>a+i.size,0);
+  let acc=0,cut=1,best=Infinity;
+  for(let i=1;i<items.length;i++){
+    acc+=items[i-1].size; const ratio=acc/total;
+    const score=Math.abs(ratio-.5); if(score<best){best=score;cut=i}
+  }
+  const A=items.slice(0,cut),B=items.slice(cut),sumA=A.reduce((a,i)=>a+i.size,0),r=sumA/total;
+  if(w>=h){squarify(A,x,y,w*r,h,out);squarify(B,x+w*r,y,w*(1-r),h,out)}
+  else{squarify(A,x,y,w,h*r,out);squarify(B,x,y+h*r,w,h*(1-r),out)}
+}
+function renderTreemap(){
+  let items=[];
+  if(state.metric==='symbols')items=state.symbols.map(x=>({...x,label:x.name}));
+  if(state.metric==='sections')items=state.sections.map(x=>({...x,label:x.name}));
+  if(state.metric==='modules'){
+    const g={};for(const x of state.modules){if(!g[x.module])g[x.module]={label:x.module,name:x.module,size:0,section:x.section};g[x.module].size+=x.size}items=Object.values(g)
+  }
+  items=filterList(items).filter(x=>x.size>0).sort((a,b)=>b.size-a.size).slice(0,state.metric==='symbols'?200:800);
+  if(!items.length)return '<div class=empty>没有可显示的数据</div>';
+  const out=[];squarify(items,0,0,100,100,out);
+  return `<div class=small style="padding:8px 10px;border-bottom:1px solid var(--line)">Symbol Treemap 仅显示最大的 200 项；小变量请使用 Explorer，通过搜索/Section/Module 精确定位。</div><div class=treemap>${out.map(x=>`<div class=tile style="left:${x.x}%;top:${x.y}%;width:${x.w}%;height:${x.h}%;background:${colorFor(x)}" title="${x.label}\n${fmt(x.size)}"><b>${x.label}</b><span>${fmt(x.size)}</span></div>`).join('')}</div>`;
+}
+function renderOverride(){
+  return `<div class=region-editor><div class=small style="margin-bottom:10px">仅用于 LD 宏无法解析时。支持十六进制，例如 0x01000000、0x300000。留空即使用自动解析值。</div>`+
+  state.regions.map(r=>`<div class=region-grid><b>${r.name}</b><input class=input data-r="${r.name}" data-k="origin" placeholder="${hex(r.origin)}" value="${state.overrides[r.name]?.originText||''}"><input class=input data-r="${r.name}" data-k="length" placeholder="${fmt(r.length)}" value="${state.overrides[r.name]?.lengthText||''}"><span class=small>${r.orgExpr} / ${r.lenExpr}</span><button class=btn data-apply="${r.name}">应用</button></div>`).join('')+
+  `</div>`;
+}
+function render(){
+  renderHeader();
+  const titles={regions:'Memory Regions',address:'Address Layout / Free Holes',explorer:'Explorer · Bank / Section / Symbols',treemap:'Treemap',sections:'Sections',modules:'Modules',symbols:'Symbols',override:'Region Override'};
+  $('#title').textContent=titles[state.view];
+  $('#legend').innerHTML=`<span><i class=dot style="background:#4c9aff"></i>code</span><span><i class=dot style="background:#43b581"></i>rodata</span><span><i class=dot style="background:#e6a23c"></i>data</span><span><i class=dot style="background:#e35d6a"></i>bss</span>`;
+  let html='';
+  if(state.view==='regions')html=renderRegions();
+  if(state.view==='address')html=renderAddress();
+  if(state.view==='explorer')html=renderExplorer();
+  if(state.view==='treemap')html=renderTreemap();
+  if(state.view==='sections')html=renderSections();
+  if(state.view==='modules')html=renderModules();
+  if(state.view==='symbols')html=renderSymbols();
+  if(state.view==='override')html=renderOverride();
+  $('#view').innerHTML=html;
+  if(state.view==='override'){
+    $$('[data-apply]').forEach(b=>b.onclick=()=>{
+      const r=b.dataset.apply, o=$(`[data-r="${CSS.escape(r)}"][data-k="origin"]`).value.trim(), l=$(`[data-r="${CSS.escape(r)}"][data-k="length"]`).value.trim();
+      state.overrides[r]=state.overrides[r]||{};
+      state.overrides[r].originText=o;state.overrides[r].lengthText=l;
+      state.overrides[r].origin=o?parseInt(o,0):NaN;state.overrides[r].length=l?parseInt(l,0):NaN;
+      enrichRegions();render();
+    });
+  }
+}
+async function handleFiles(files){
+  for(const f of files){
+    const t=await f.text(),n=f.name.toLowerCase();
+    if(n.endsWith('.map')){state.mapText=t;state.mapName=f.name}
+    else if(n.endsWith('.ld')){state.ldText=t;state.ldName=f.name}
+    else if(n.endsWith('.h')||n.endsWith('.txt'))state.headerText=t;
+  }
+  loadAll();
+}
+$('#files').onchange=e=>handleFiles(e.target.files);
+$('#drop').ondragover=e=>{e.preventDefault();e.dataTransfer.dropEffect='copy'};
+$('#drop').ondrop=e=>{e.preventDefault();handleFiles(e.dataTransfer.files)};
+$$('.tab').forEach(t=>t.onclick=()=>{$$('.tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');state.view=t.dataset.view;render()});
+$('#sort').onchange=e=>{state.sort=e.target.value;render()};
+$('#metric').onchange=e=>{state.metric=e.target.value;if(state.view!=='treemap'){$$('.tab').forEach(x=>x.classList.toggle('active',x.dataset.view==='treemap'));state.view='treemap'}render()};
+$('#search').oninput=e=>{state.search=e.target.value;render()};
+$('#exportCsv').onclick=()=>{
+  const rows=[['Region','Origin','End','Total','Used','Free','Usage','LargestFreeHole','OrgExpr','LenExpr']];
+  for(const r of state.regions)rows.push([r.name,hex(r.origin),hex(r.end),r.length||'',r.used||'',Number.isFinite(r.free)?r.free:'',Number.isFinite(r.usage)?(r.usage*100).toFixed(3):'',Number.isFinite(r.largestGap)?r.largestGap:'',r.orgExpr,r.lenExpr]);
+  const csv=rows.map(r=>r.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(',')).join('\r\n');
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='memory_regions.csv';a.click();URL.revokeObjectURL(a.href);
+};
+render();
+</script>
+</body></html>
